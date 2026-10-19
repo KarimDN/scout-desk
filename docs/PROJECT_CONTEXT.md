@@ -30,7 +30,7 @@ Namespaces: `App\Modules\<Module>\...` and `App\Shared\...`.
 |---|---|---|
 | Shared | Cross-cutting helpers: public-ID trait, base exceptions, enums used by several modules | nothing |
 | Audit | Append-only `audit_logs` and the single API for recording entries | Shared |
-| Identity | Users, login/logout, throttling, active-account check, account tokens (hashed, expiring, single-use), password setting and reset, user locale | Shared, Audit |
+| Identity | Users, login/logout, throttling, active-account check, account tokens (hashed, expiring, single-use), password setting and reset, user locale. User model: `App\Modules\Identity\Models\User`. | Shared, Audit |
 | Organization | Groups, patrols, memberships and roles, policies, group/patrol scoping, invitations and member management | Shared, Audit, Identity |
 
 Rules:
@@ -70,6 +70,16 @@ Rules:
 ## 6. Roles (Phase 2)
 
 `group_secretary` and `patrol_secretary`. The `is_platform_admin` flag exists but has no UI. `group_leader` comes later.
+### Core tables (as of Task 2.4)
+
+- `users`: `public_id` (ULID, unique), `name`, `email` (unique), `password`, `locale`, `is_active`, `is_platform_admin`, `last_login_at`, remember token, timestamps. `is_active` and `is_platform_admin` are not mass-assignable and are never set from request input.
+- `groups`: `public_id`, `name`.
+- `patrols`: `public_id`, `group_id` (cascade), `name`; unique `(group_id, name)`. `is_active` is added in Task 2.10.
+- `memberships`: `public_id`, `user_id` (cascade), `group_id` (cascade), `patrol_id` (nullable, null on delete), `role` (string, cast to the `Role` enum); unique `(user_id, group_id)`; index `(group_id, patrol_id)`.
+
+Code: `App\Shared\HasPublicId` generates a ULID when a model is saved and makes `public_id` the route key (an unsaved `factory()->make()` has none). Models are in `App\Modules\Identity\Models` (User) and `App\Modules\Organization\Models` (Group, Patrol, Membership); `Role` is in `App\Modules\Organization\Enums`. `Group`, `Patrol` and `Membership` have explicit `forGroup()` scopes.
+
+Known gaps, enforced at the application layer: a membership's patrol must belong to the membership's group, and a `patrol_secretary` must have a patrol while a `group_secretary` has none (Actions in Tasks 2.7 and 2.11, with tests). A `patrol_secretary` with a null patrol must have no patrol access (policies, Task 2.9).
 
 ## 7. Submission revision and immutability rules (built in Phase 3)
 
@@ -104,7 +114,7 @@ Phase 2 (foundation):
 - 2.1 Create project: done
 - 2.2 Module skeleton and project context: done
 - 2.3 English/Arabic and RTL shell: done
-- 2.4 Core schema and models: pending
+- 2.4 Core schema and models: done
 - 2.5 Audit log: pending
 - 2.6 Account tokens and `scoutdesk:install`: pending
 - 2.7 Accepting an invitation: pending
