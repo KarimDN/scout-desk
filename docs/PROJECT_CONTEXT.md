@@ -91,6 +91,13 @@ Known gaps, enforced at the application layer: a membership's patrol must belong
 - `AuditLog` models cannot be updated or deleted. Never use `AuditLog::query()->update()` or `->delete()`, because query-builder writes bypass the model events. When hosting is decided, also remove UPDATE/DELETE rights on this table for the production database user.
 - Audit imports no Identity or Organization classes; callers pass plain IDs.
 
+### Account tokens and first-run setup (as of Task 2.6)
+
+- Table `account_tokens`: `purpose` (`invitation` or `password_reset`), `email`, nullable `user_id`/`group_id`/`patrol_id`, `role` (plain string), `token_hash` (SHA-256, unique), `expires_at`, `used_at`, `revoked_at`, `created_by`. Identity owns the model, `AccountTokenPurpose` enum and `IssueAccountToken` Action; it imports no Organization classes.
+- Tokens are 48 random characters. Only the hash is stored. The plaintext exists once, in `IssuedAccountToken`, and is shown to the recipient and discarded. Lifetime comes from `scoutdesk.invitation_lifetime_hours`. `AccountToken::usable()` means not used, not revoked and not expired.
+- `php artisan scoutdesk:install [--group=] [--email=]` (class in Organization, registered through `withCommands()` in `bootstrap/app.php`) creates the group and prints a one-time secretary link. It asks for the group name and email if the options are missing, and does not ask for the secretary's name (the secretary enters it when accepting). It refuses if an active group secretary exists, if more than one group exists, or if the email already has an account. If only a pending invitation exists (or the secretary is inactive), it reuses the group, revokes the old pending link and issues a new one. Audited as `setup.install_run`.
+- The printed link is `<APP_URL>/invitations/{token}`. Task 2.7 must register `GET /invitations/{token}`. For a clickable local link, set `APP_URL=http://127.0.0.1:8000` in your local `.env` (never committed).
+
 ## 7. Submission revision and immutability rules (built in Phase 3)
 
 1. A revision owns its content: structured rows keyed by the revision. A new revision is created by copying the previous revision's rows.
@@ -126,7 +133,7 @@ Phase 2 (foundation):
 - 2.3 English/Arabic and RTL shell: done
 - 2.4 Core schema and models: done
 - 2.5 Audit log: done
-- 2.6 Account tokens and `scoutdesk:install`: pending
+- 2.6 Account tokens and `scoutdesk:install`: done
 - 2.7 Accepting an invitation: pending
 - 2.8 Login, logout, inactive accounts: pending
 - 2.9 Authorization layer: pending
