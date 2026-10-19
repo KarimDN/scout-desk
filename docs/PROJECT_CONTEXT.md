@@ -54,6 +54,7 @@ Rules:
 - **Text:** every user-visible string lives in lang files, with `en` and `ar` keys in parity. Use logical CSS properties only. User-entered text uses `dir="auto"`. Emails, URLs and reference numbers are rendered LTR.
 - **i18n implementation (Task 2.3):** UI strings live in `lang/<locale>/ui.php` (en and ar, identical keys, enforced by a test). `lang/ar/validation.php` covers only the rules in use (a list in `TranslationFilesTest` must be extended when a task uses a new rule). The `SetLocale` middleware (web group) applies a whitelisted session locale, else `scoutdesk.default_locale`; from Task 2.8 the logged-in user's saved language takes precedence. Dates are shown only through `App\Shared\Support\LocalizedDate`. Arabic dates use standard month names and Western digits. The layout is `resources/views/layouts/app.blade.php`, which sets `lang` and `dir` and loads the vendored Bootstrap LTR or RTL CSS. A temporary `/demo/i18n` page (non-production only) is removed in Task 2.8.
 - **Dependencies:** no new Composer or npm package without a stated reason.
+- **Model events must stay on.** Seeders and code must not use `WithoutModelEvents` or `Model::withoutEvents()`. `public_id` generation and the audit-log guards rely on model events.
 
 ## 5. Security requirements
 
@@ -80,6 +81,15 @@ Rules:
 Code: `App\Shared\HasPublicId` generates a ULID when a model is saved and makes `public_id` the route key (an unsaved `factory()->make()` has none). Models are in `App\Modules\Identity\Models` (User) and `App\Modules\Organization\Models` (Group, Patrol, Membership); `Role` is in `App\Modules\Organization\Enums`. `Group`, `Patrol` and `Membership` have explicit `forGroup()` scopes.
 
 Known gaps, enforced at the application layer: a membership's patrol must belong to the membership's group, and a `patrol_secretary` must have a patrol while a `group_secretary` has none (Actions in Tasks 2.7 and 2.11, with tests). A `patrol_secretary` with a null patrol must have no patrol access (policies, Task 2.9).
+
+### Audit (as of Task 2.5)
+
+- Table `audit_logs`: `actor_id` (nullable), `group_id` (nullable), `action`, `subject_type`, `subject_id`, `metadata` (json), `ip`, `created_at`. No `updated_at`.
+- The only way to write an entry is `App\Modules\Audit\Actions\RecordAudit`, called as `app(RecordAudit::class)->handle('noun.verb', subject: $model, groupId: $id, metadata: [...])`. The actor defaults to the authenticated user.
+- Action keys are `<noun>.<verb>`, lowercase with underscores, max 64 characters (enforced).
+- Metadata keys containing `password`, `token`, `secret`, `authorization` or `cookie` are refused at any depth (the Action throws).
+- `AuditLog` models cannot be updated or deleted. Never use `AuditLog::query()->update()` or `->delete()`, because query-builder writes bypass the model events. When hosting is decided, also remove UPDATE/DELETE rights on this table for the production database user.
+- Audit imports no Identity or Organization classes; callers pass plain IDs.
 
 ## 7. Submission revision and immutability rules (built in Phase 3)
 
@@ -115,7 +125,7 @@ Phase 2 (foundation):
 - 2.2 Module skeleton and project context: done
 - 2.3 English/Arabic and RTL shell: done
 - 2.4 Core schema and models: done
-- 2.5 Audit log: pending
+- 2.5 Audit log: done
 - 2.6 Account tokens and `scoutdesk:install`: pending
 - 2.7 Accepting an invitation: pending
 - 2.8 Login, logout, inactive accounts: pending
