@@ -52,6 +52,7 @@ Rules:
 - **Portability:** statuses and roles are string columns cast to PHP enums (no DB `enum` columns). No database-specific SQL. Everything must behave the same on SQLite and MariaDB.
 - **No building ahead:** no tables or classes before the phase that needs them.
 - **Text:** every user-visible string lives in lang files, with `en` and `ar` keys in parity. Use logical CSS properties only. User-entered text uses `dir="auto"`. Emails, URLs and reference numbers are rendered LTR.
+- **i18n implementation (Task 2.3):** UI strings live in `lang/<locale>/ui.php` (en and ar, identical keys, enforced by a test). `lang/ar/validation.php` covers only the rules in use (a list in `TranslationFilesTest` must be extended when a task uses a new rule). The `SetLocale` middleware (web group) applies a whitelisted session locale, else `scoutdesk.default_locale`; from Task 2.8 the logged-in user's saved language takes precedence. Dates are shown only through `App\Shared\Support\LocalizedDate`. Arabic dates use standard month names and Western digits. The layout is `resources/views/layouts/app.blade.php`, which sets `lang` and `dir` and loads the vendored Bootstrap LTR or RTL CSS. A temporary `/demo/i18n` page (non-production only) is removed in Task 2.8.
 - **Dependencies:** no new Composer or npm package without a stated reason.
 
 ## 5. Security requirements
@@ -101,8 +102,8 @@ Approval, document generation, issuing and signing are separate operations. The 
 Phase 2 (foundation):
 - 2.0 Environment check: done
 - 2.1 Create project: done
-- 2.2 Module skeleton and project context: in progress
-- 2.3 English/Arabic and RTL shell: pending
+- 2.2 Module skeleton and project context: done
+- 2.3 English/Arabic and RTL shell: done
 - 2.4 Core schema and models: pending
 - 2.5 Audit log: pending
 - 2.6 Account tokens and `scoutdesk:install`: pending
